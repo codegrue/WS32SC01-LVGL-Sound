@@ -1,0 +1,13 @@
+{
+    "idf.portWin": "COM5",
+    "files.associations": {
+        "preferences.h": "c",
+        "strings.h": "c",
+        "ui.h": "c"
+    },
+    "cmake.configureOnOpen": false,
+    "idf.adapterTargetName": "esp32s3",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-bridge.cfg"
+    ]
+}
