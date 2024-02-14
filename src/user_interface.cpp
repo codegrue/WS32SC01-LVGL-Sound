@@ -67,7 +67,5 @@ void UserInterface::increment_counter(lv_event_t *event)
 
 void UserInterface::play_sound(lv_event_t *event)
 {
-    ESP_LOGI("", "play_sound");
-
     Sound::play();
 }
