@@ -8,20 +8,22 @@
 // In Audacity:
 //      - export WAV, Mono, 22050 Hz, Signed 16-bit PCM
 // In VSCode bash terminal
-//      - xxd -i file.wav file.h
+//      - xxd -i file.wav file_wav.h
 //      - add 'const' keyword to object
-uint8_t channels = 1;
-uint16_t sample_rate = 22050;
-
 // Caution: make sure the audio files are 'const' so they stay in PROMEM
-MemoryStream sound1(beep1_wav, sizeof(beep1_wav), true, FLASH_RAM);
-MemoryStream sound2(beep2_wav, sizeof(beep2_wav), true, FLASH_RAM);
+MemoryStream beep1(beep1_wav, sizeof(beep1_wav), true, FLASH_RAM);
+MemoryStream beep2(beep2_wav, sizeof(beep2_wav), true, FLASH_RAM);
 
-I2SConfig config;
-I2SStream out; // Output to I2S
+AudioInfo audioInfo(SAMPLE_RATE, AUDIO_CHANNELS, BITS_PER_SAMPLE);
+
+// data flow: sound -> volume -> i2s
+MemoryStream *sound;
+I2SStream i2s;
+VolumeStream volume(i2s);
 StreamCopy copier;
 
-bool even = false;
+bool even = true;
+float currentVolume = 1.0;
 
 void Sound::setup()
 {
@@ -29,30 +31,42 @@ void Sound::setup()
 
     AudioLogger::instance().begin(Serial, AudioLogger::Warning);
 
-    config = out.defaultConfig(TX_MODE);
-    config.sample_rate = sample_rate;
-    config.channels = channels;
-    config.bits_per_sample = 16;
+    I2SConfig config = i2s.defaultConfig(TX_MODE);
+    config.copyFrom(audioInfo);
     config.pin_bck = I2S_BCLK;
     config.pin_data = I2S_DOUT;
     config.pin_ws = I2S_LRC;
-    out.begin(config);
+    i2s.begin(config);
+
+    volume.begin(config); // we need to provide the bits_per_sample and channels
+    volume.setVolume(currentVolume);
+
+    // set default sound
+    sound = &beep1;
+}
+
+void Sound::stop()
+{
+    // lower volume to eliminate pops when ending audio playback
+    volume.setVolume(0.0);
+    sound->end();
+    copier.end();
 }
 
 void Sound::play()
 {
     ESP_LOGI("", "Sound::play()");
 
+    // select which sound to play
     if (even)
-    {
-        sound1.begin();
-        copier.begin(out, sound1);
-    }
+        sound = &beep1;
     else
-    {
-        sound2.begin();
-        copier.begin(out, sound2);
-    }
+        sound = &beep2;
+
+    sound->begin();                  // reset sound at beginning of data
+    volume.setVolume(currentVolume); // set the playback volume
+    copier.begin(volume, *sound);    // begin playback
+
     even = !even;
 
     SerialHelpers::logHeapInfo("after Sound::play");
