@@ -1,6 +1,10 @@
+![alt text](https://raw.githubusercontent.com/codegrue/WS32SC01-LVGL-Sound/main/images/sample.png)
+
 This sample demonstrates how to run LVGL on the
 Panlee WT32SC01 Plus development board. It includes a label, a counter, and
 a button to increment the value.
+
+![alt text](https://raw.githubusercontent.com/codegrue/WS32SC01-LVGL-Sound/main/images/board.png)
 
 Board:
 https://www.aliexpress.us/item/3256804081022016.html?spm=a2g0o.order_detail.order_detail_item.3.5074f19cbai5dc&gatewayAdapt=glo2usa
