@@ -6,9 +6,11 @@
 uint8_t channels = 2;
 uint16_t sample_rate = 22050;
 
+// Caution: make sure the audio files are 'const' so they stay in PROMEM
+MemoryStream sound1(beep1_wav, sizeof(beep1_wav), true, FLASH_RAM);
+MemoryStream sound2(beep2_wav, sizeof(beep2_wav), true, FLASH_RAM);
+
 I2SConfig config;
-MemoryStream sound1(beep1_wav, sizeof(beep1_wav));
-MemoryStream sound2(beep2_wav, sizeof(beep2_wav));
 I2SStream out; // Output to I2S
 StreamCopy copier;
 
@@ -18,7 +20,7 @@ void Sound::setup()
 {
     ESP_LOGI("", "Sound::setup()");
 
-    AudioLogger::instance().begin(Serial, AudioLogger::Info);
+    AudioLogger::instance().begin(Serial, AudioLogger::Warning);
 
     config = out.defaultConfig(TX_MODE);
     config.sample_rate = sample_rate;
@@ -45,6 +47,8 @@ void Sound::play()
         copier.begin(out, sound2);
     }
     even = !even;
+
+    SerialHelpers::logHeapInfo("after Sound::play");
 }
 
 void Sound::loop()
