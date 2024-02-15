@@ -3,7 +3,14 @@
 #include "sounds/beep1.h"
 #include "sounds/beep2.h"
 
-uint8_t channels = 2;
+// How to create audio memory streams
+// https://github.com/pschatzmann/arduino-audio-tools/wiki/MemoryStream:-Converting-a-File-to-Flash-Memory
+// In Audacity:
+//      - export WAV, Mono, 22050 Hz, Signed 16-bit PCM
+// In VSCode bash terminal
+//      - xxd -i file.wav file.h
+//      - add 'const' keyword to object
+uint8_t channels = 1;
 uint16_t sample_rate = 22050;
 
 // Caution: make sure the audio files are 'const' so they stay in PROMEM
