@@ -10,7 +10,7 @@
 // In VSCode bash terminal
 //      - xxd -i file.wav file_wav.h
 //      - add 'const' keyword to object
-// Caution: make sure the audio files are 'const' so they stay in PROMEM
+// Caution: make sure the audio files are 'const' so they stay in PROGMEM
 MemoryStream beep1(beep1_wav, sizeof(beep1_wav), true, FLASH_RAM);
 MemoryStream beep2(beep2_wav, sizeof(beep2_wav), true, FLASH_RAM);
 
