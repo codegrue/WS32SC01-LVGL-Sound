@@ -1,7 +1,11 @@
 #include "graphics.h"
 
-extern lv_point_t g_touchCoordinate;
+static const int bufferSize = SCREEN_WIDTH * 10;
 
+static lv_disp_draw_buf_t draw_buf;
+static lv_color_t buf[2][bufferSize];
+
+// https://github.com/lovyan03/LovyanGFX/tree/master/examples/Advanced/LVGL_PlatformIO
 LGFX::LGFX(void)
 {
     // Configure bus control settings.
@@ -26,14 +30,16 @@ LGFX::LGFX(void)
     panel.pin_cs = -1;                     // CS to be pulled low
     panel.pin_rst = 4;                     // RST is connected to the development board RST
     panel.pin_busy = -1;                   // Pin number to which BUSY is connected (-1 = disable)
+    panel.memory_width = SCREEN_HEIGHT;    // Maximum width supported by driver IC
+    panel.memory_height = SCREEN_WIDTH;    // Maximum height supported by driver IC
     panel.panel_width = SCREEN_HEIGHT;     // actual displayable width
     panel.panel_height = SCREEN_WIDTH;     // actual visible height
     panel.offset_x = 0;                    // Panel offset amount in X direction
     panel.offset_y = 0;                    // Panel offset amount in Y direction
-    panel.offset_rotation = 0;             // Rotation direction value offset 0~7 (4~7 is upside down)
+    panel.offset_rotation = 1;             // Rotation direction value offset 0~7 (4~7 is upside down)
     panel.dummy_read_pixel = 8;            // Number of bits for dummy read before pixel readout
     panel.dummy_read_bits = 1;             // Number of bits for dummy read before non-pixel data read
-    panel.readable = true;                 // Set to true if data can be read
+    panel.readable = false;                // Set to true if data can be read
     panel.invert = true;                   // Set to true if the light/darkness of the panel is reversed
     panel.rgb_order = false;               // Set to true if the panel's red and blue are swapped
     panel.dlen_16bit = false;              // Set to true for panels that send data length in 16-bit units
@@ -45,7 +51,7 @@ LGFX::LGFX(void)
     backlight.pin_bl = 45;                     // Pin number to which the backlight is connected
     backlight.invert = false;                  // true to reverse backlight brightness
     backlight.freq = 44100;                    // Backlight PWM frequency
-    backlight.pwm_channel = 7;                 // The channel number of the PWM to be used.
+    backlight.pwm_channel = 0;                 // The channel number of the PWM to be used.
     _light_instance.config(backlight);
     _panel_instance.setLight(&_light_instance);
 
@@ -59,7 +65,7 @@ LGFX::LGFX(void)
     touchCfg.bus_shared = true;         // Set to true if you are using a common bus with the screen
     touchCfg.offset_rotation = 0;       // Adjustment when display and touch orientation do not match Set with a value of 0~7
     // For I2C connections
-    touchCfg.i2c_port = 1;    // Select I2C to use (0 or 1)
+    touchCfg.i2c_port = 0;    // Select I2C to use (0 or 1)
     touchCfg.i2c_addr = 0x38; // I2C Device Address Number
     touchCfg.pin_sda = 6;     // Pin number to which the SDA is connected
     touchCfg.pin_scl = 5;     // Pin number to which the SCL is connected
@@ -74,43 +80,31 @@ LGFX::LGFX(void)
 LGFX lcd;
 
 /*** Display callback to flush the buffer to screen ***/
-void Graphics::display_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+void _display_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
 {
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
 
     lcd.startWrite();
-    lcd.setAddrWindow(area->x1, area->y1, w, h);
-    lcd.writePixels((lgfx::rgb565_t *)&color_p->full, w * h);
+    lcd.pushImageDMA(area->x1, area->y1, w, h, (lgfx::rgb565_t *)&color_p->full);
     lcd.endWrite();
 
-    lv_disp_flush_ready(disp);
+    lv_disp_flush_ready(disp); /* tell lvgl that flushing is done */
 }
 
 /*** Touchpad callback to read the touchpad ***/
-void Graphics::touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+void _touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
     lgfx::touch_point_t tp;
-    int touched = lcd.getTouch(&tp);
+    bool touched = lcd.getTouch(&tp);
 
-    if (touched == 1)
+    if (touched)
     {
         data->state = LV_INDEV_STATE_PR;
 
-        int touch_x = tp.x;
-        int touch_y = tp.y;
-
         /*Set the coordinates*/
-        data->point.x = touch_x;
-        data->point.y = touch_y;
-
-        // store last touched coordinate for diagnostics
-        g_touchCoordinate = data->point;
-
-        // Print coordinates, for debugging
-        // Serial.println("True  = (" + string(touch_x) + " | " + string(touch_y) + ")");
-        // Serial.println("Calib = [" + string(calibrated_x) + " | " + string(calibrated_y) + "]");
-        // Serial.println("-----");
+        data->point.x = tp.x;
+        data->point.y = tp.y;
     }
     else
     {
@@ -125,23 +119,23 @@ void Graphics::LVGL_init()
     lv_init();
 
     // set up the display buffer
-    lv_disp_draw_buf_init(&draw_buf, buf, buf2, bufferSize);
+    lv_disp_draw_buf_init(&draw_buf, buf[0], buf[1], bufferSize);
 
     // Set up LVGL screen draw handler
-    static lv_disp_drv_t disp_drv;               /*Descriptor of a display driver*/
-    lv_disp_drv_init(&disp_drv);                 /*Basic initialization*/
-    disp_drv.flush_cb = Graphics::display_flush; /*Set your driver function*/
-    disp_drv.draw_buf = &draw_buf;               /*Assign the buffer to the display*/
-    disp_drv.hor_res = SCREEN_WIDTH;             /*Set the horizontal resolution of the display*/
-    disp_drv.ver_res = SCREEN_HEIGHT;            /*Set the vertical resolution of the display*/
-    lv_disp_drv_register(&disp_drv);             /*Finally register the driver*/
+    static lv_disp_drv_t disp_drv;      /*Descriptor of a display driver*/
+    lv_disp_drv_init(&disp_drv);        /*Basic initialization*/
+    disp_drv.flush_cb = _display_flush; /*Set your driver function*/
+    disp_drv.draw_buf = &draw_buf;      /*Assign the buffer to the display*/
+    disp_drv.hor_res = SCREEN_WIDTH;    /*Set the horizontal resolution of the display*/
+    disp_drv.ver_res = SCREEN_HEIGHT;   /*Set the vertical resolution of the display*/
+    lv_disp_drv_register(&disp_drv);    /*Finally register the driver*/
 
     // Set up LVGL screen touch handler
-    static lv_indev_drv_t indev_drv;             /*Descriptor of a input device driver*/
-    lv_indev_drv_init(&indev_drv);               /*Basic initialization*/
-    indev_drv.type = LV_INDEV_TYPE_POINTER;      /*Touch pad is a pointer-like device*/
-    indev_drv.read_cb = Graphics::touchpad_read; /*Set your driver function*/
-    lv_indev_drv_register(&indev_drv);           /*Finally register the driver*/
+    static lv_indev_drv_t indev_drv;        /*Descriptor of a input device driver*/
+    lv_indev_drv_init(&indev_drv);          /*Basic initialization*/
+    indev_drv.type = LV_INDEV_TYPE_POINTER; /*Touch pad is a pointer-like device*/
+    indev_drv.read_cb = _touchpad_read;     /*Set your driver function*/
+    lv_indev_drv_register(&indev_drv);      /*Finally register the driver*/
 }
 
 void Graphics::lovyanGFX_init()
@@ -149,7 +143,7 @@ void Graphics::lovyanGFX_init()
     ESP_LOGD("", "_lovyanGFX_init");
 
     lcd.init();
-    lcd.setRotation(1);
+    lcd.initDMA();
 }
 
 void Graphics::set_brightness(int brightness)

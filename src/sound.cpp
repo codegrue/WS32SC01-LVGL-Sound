@@ -23,7 +23,7 @@ VolumeStream volume(i2s);
 StreamCopy copier;
 
 bool even = true;
-float currentVolume = 1.0;
+float currentVolume = 0.5;
 
 void Sound::setup()
 {
@@ -43,6 +43,7 @@ void Sound::setup()
 
     // set default sound
     sound = &beep1;
+    sound->end(); // dont play the placeholder sound
 }
 
 void Sound::stop()
