@@ -1,6 +1,6 @@
 #include "main.h"
 
-void setup()
+extern "C" void app_main(void)
 {
 	SerialHelpers::setupSerial();
 
@@ -25,8 +25,8 @@ void setup()
 	SerialHelpers::logHeapInfo("after RTOSTasks::setup()");
 }
 
-void loop()
-{
-	// RTOS calls tasks
-	// nothing to do here
-}
+// void loop()
+// {
+// 	// RTOS calls tasks
+// 	// nothing to do here
+// }

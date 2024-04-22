@@ -6,7 +6,7 @@ lv_obj_t *counterLabel;
 
 void _custom_lvgl_logger(const char *buf)
 {
-    ESP_LOGE("LVGL", "%S", buf);
+    // ESP_LOGE("LVGL", "%s", buf);
 }
 
 void UserInterface::setup()
